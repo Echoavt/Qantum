@@ -1,0 +1,33 @@
+version: "3.9"
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  api:
+    build:
+      context: .
+      dockerfile: backend/dockerfile
+    env_file: .env
+    volumes:
+      - ./backend/app:/app/app
+      - ./models:/models
+    depends_on: [redis]
+    ports: ["8000:8000"]
+  worker:
+    build:
+      context: .
+      dockerfile: backend/dockerfile
+    env_file: .env
+    command: ["celery","-A","app.celery_app.app","worker","-B","--loglevel","INFO"]
+    depends_on: [redis, api]
+    volumes:
+      - ./backend/app:/app/app
+      - ./models:/models
+  frontend:
+    image: node:20-alpine
+    working_dir: /web
+    volumes:
+      - ./frontend/react:/web
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports: ["5173:5173"]
+    depends_on: [api]
